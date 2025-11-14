@@ -1,4 +1,4 @@
-# Campus Resource Hub (v3)
+# Campus Resource Hub
 
 Campus resource discovery and booking with roles, reviews, messages, and an admin dashboard.
 
