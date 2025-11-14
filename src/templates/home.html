@@ -1,0 +1,57 @@
+{% extends "_base.html" %}
+{% block content %}
+<div class="row align-items-center mb-5">
+  <div class="col-lg-7 mb-4 mb-lg-0">
+    <h1 class="display-5 fw-bold mb-3">Find and book campus resources.</h1>
+    <p class="lead text-muted mb-4">Study rooms • AV equipment • Labs • Event spaces • Tutoring time</p>
+    <div class="d-flex flex-column flex-sm-row gap-2">
+      <a class="btn btn-lg btn-brand" href="{{ url_for('resources.browse') }}">Browse Resources</a>
+      {% if current_user.is_authenticated %}
+      <a class="btn btn-lg btn-outline-secondary" href="{{ url_for('bookings.my_bookings') }}">My Bookings</a>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-lg-5 d-none d-lg-block">
+    <img class="img-fluid rounded-4 shadow-lg" src="{{ url_for('static', filename='img/IU.jpg') }}" alt="Campus resources illustration">
+  </div>
+</div>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="text-uppercase text-muted mb-0">Top Resources</h5>
+  <form method="get" class="d-inline-flex align-items-center gap-2">
+    <label class="small text-muted">Sort</label>
+    <select name="sort" class="form-select form-select-sm" onchange="this.form.submit()">
+      <option value="recent" {{ 'selected' if (sort or 'recent')=='recent' else '' }}>Recent</option>
+      <option value="booked" {{ 'selected' if (sort or 'recent')=='booked' else '' }}>Most booked</option>
+      <option value="rated"  {{ 'selected' if (sort or 'recent')=='rated'  else '' }}>Top rated</option>
+    </select>
+  </form>
+  </div>
+<div class="row g-3 g-md-4" role="list">
+  {% for r in top %}
+  <div class="col-12 col-sm-6 col-md-6 col-lg-3" role="listitem">
+    <div class="card h-100 shadow-sm">
+      <img src="{{ r.image_url }}" class="card-img-top resource-image" alt="{{ r.title }}">
+      <div class="card-body d-flex flex-column">
+        <h6 class="card-title mb-2 fw-bold">
+          {{ r.title }}
+          {% if (r.avg or 0) >= 4.5 %}
+          <span class="badge text-bg-primary ms-1">Top rated</span>
+          {% endif %}
+        </h6>
+        <div class="small text-muted mb-2">{{ r.location or '' }}</div>
+        <p class="small text-muted mb-3 flex-grow-1">{{ (r.description or '')[:80] ~ ('…' if (r.description and r.description|length>80) else '') }}</p>
+        <div class="d-flex justify-content-between align-items-center mt-auto">
+          <span class="small fw-semibold">⭐ {{ '%.1f'|format(r.avg or 0) }}</span>
+          <a href="{{ url_for('resources.detail', resource_id=r.resource_id) }}" class="btn btn-sm btn-brand">View</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% if show_more %}
+<div class="text-end mt-3">
+  <a class="btn btn-outline-secondary" href="{{ url_for('resources.browse', sort=(sort or 'recent')) }}">Show more</a>
+  </div>
+{% endif %}
+{% endblock %}

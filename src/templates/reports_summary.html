@@ -1,0 +1,92 @@
+{% extends "_base.html" %}
+{% block content %}
+<div class="row mb-4">
+  <div class="col-md-8">
+    <h1 class="h3 fw-bold mb-2">Auto‑Summary Reporter</h1>
+    <p class="text-muted mb-0">
+      This summary is generated automatically from the last 7 days of approved and completed bookings.
+      It is fully based on system data&mdash;no external AI service is used.
+    </p>
+  </div>
+</div>
+
+<div class="row gy-4">
+  <div class="col-md-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <h2 class="h5 fw-semibold mb-3">Weekly Narrative</h2>
+        <p class="mb-0">{{ narrative }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body">
+        <h2 class="h6 fw-semibold text-uppercase text-muted mb-3">At a Glance (7 days)</h2>
+        <dl class="row mb-0 small">
+          <dt class="col-7">Total bookings</dt>
+          <dd class="col-5 text-end">{{ stats.total_bookings }}</dd>
+          <dt class="col-7">Distinct resources</dt>
+          <dd class="col-5 text-end">{{ stats.distinct_resources }}</dd>
+          <dt class="col-7">Active categories</dt>
+          <dd class="col-5 text-end">{{ stats.active_categories }}</dd>
+        </dl>
+      </div>
+    </div>
+    {% if quiet_resources %}
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <h2 class="h6 fw-semibold text-uppercase text-muted mb-3">Quiet Resources</h2>
+        <p class="small text-muted mb-2">Published but with no bookings in the last 7 days:</p>
+        <ul class="small mb-0">
+          {% for r in quiet_resources[:5] %}
+          <li>{{ r.title }} <span class="text-muted">({{ r.category or 'Uncategorized' }}, {{ r.location or 'Location unknown' }})</span></li>
+          {% endfor %}
+          {% if quiet_resources|length > 5 %}
+          <li class="text-muted">+ {{ quiet_resources|length - 5 }} more</li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% if top_resources %}
+<div class="row mt-4">
+  <div class="col-12">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <h2 class="h5 fw-semibold mb-3">Top Resources This Week</h2>
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead>
+              <tr class="small text-muted">
+                <th scope="col">Resource</th>
+                <th scope="col">Category</th>
+                <th scope="col" class="text-end">Bookings</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in top_resources %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('resources.detail', resource_id=r.id) }}" class="fw-semibold text-decoration-none">
+                    {{ r.title }}
+                  </a>
+                </td>
+                <td class="small text-muted">{{ r.category or 'Uncategorized' }}</td>
+                <td class="text-end fw-semibold">{{ r.count }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+

@@ -1,0 +1,159 @@
+{% extends "_base.html" %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-3">
+    <div class="card p-3 filter-sidebar">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Filters</h5>
+        <button class="btn btn-sm btn-outline-secondary d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#filtersCollapse" aria-expanded="false" aria-controls="filtersCollapse">
+          <span class="d-inline-block">Toggle</span>
+        </button>
+      </div>
+      <div class="collapse d-lg-block" id="filtersCollapse">
+        <form method="get">
+          <div class="mb-3">
+            <label class="form-label d-block fw-semibold">Category</label>
+            {% for c in ['Classroom','Conference Room','Lab','Equipment'] %}
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="category" value="{{c}}" id="c{{loop.index}}" {{ 'checked' if request.args.get('category')==c else '' }}>
+              <label class="form-check-label" for="c{{loop.index}}">{{c}}</label>
+            </div>
+            {% endfor %}
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="category" value="" id="call" {{ 'checked' if not request.args.get('category') else '' }}>
+              <label class="form-check-label" for="call">All</label>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label d-block fw-semibold">Location</label>
+            {% for loc in locations %}
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="location" value="{{loc}}" id="l{{loop.index}}" {{ 'checked' if request.args.get('location')==loc else '' }}>
+                <label class="form-check-label" for="l{{loop.index}}">{{loc}}</label>
+              </div>
+              {% endfor %}
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="location" value="" id="lall" {{ 'checked' if not request.args.get('location') else '' }}>
+              <label class="form-check-label" for="lall">All</label>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label d-block fw-semibold">Capacity</label>
+            {% for cap in [1,4,10,20,30] %}
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="capacity" value="{{cap}}" id="p{{loop.index}}" {{ 'checked' if request.args.get('capacity')|int==cap else '' }}>
+              <label class="form-check-label" for="p{{loop.index}}">≥ {{cap}}</label>
+            </div>
+            {% endfor %}
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="capacity" value="" id="pall" {{ 'checked' if not request.args.get('capacity') else '' }}>
+              <label class="form-check-label" for="pall">Any</label>
+            </div>
+          </div>
+          <div class="d-grid"><button class="btn btn-brand">Apply Filters</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-9">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
+      <h3 class="mb-2 mb-md-0">Search Results</h3>
+      <div class="d-flex align-items-center gap-3">
+        <form method="get" class="d-inline-flex align-items-center gap-2">
+          <input type="hidden" name="q" value="{{ request.args.get('q','') }}">
+          <input type="hidden" name="category" value="{{ request.args.get('category','') }}">
+          <input type="hidden" name="location" value="{{ request.args.get('location','') }}">
+          <input type="hidden" name="capacity" value="{{ request.args.get('capacity','') }}">
+          <input type="hidden" name="date" value="{{ request.args.get('date','') }}">
+          <input type="hidden" name="slot" value="{{ request.args.get('slot','') }}">
+          <label class="small text-muted">Sort</label>
+          {% set s = request.args.get('sort','recent') %}
+          <select name="sort" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="recent" {{ 'selected' if s=='recent' else '' }}>Recent</option>
+            <option value="booked" {{ 'selected' if s=='booked' else '' }}>Most booked</option>
+            <option value="rated"  {{ 'selected' if s=='rated'  else '' }}>Top rated</option>
+          </select>
+        </form>
+      </div>
+      <div class="small text-muted">{{ resources|length }} result{{ 's' if resources|length != 1 else '' }} · sorted by {{ sort_label }}</div>
+    </div>
+    <div class="vstack gap-3">
+      {% for r in resources %}
+      <div class="card p-3">
+        <div class="row g-3 align-items-center">
+          <div class="col-12 col-md-3">
+            <img class="resource-image w-100" src="{{ r.image_url }}" alt="{{ r.title }}">
+          </div>
+          <div class="col-12 col-md-6">
+            <h5 class="mb-2 fw-bold">
+              {{ r.title }}
+              {% if (r.avg or 0) >= 4.5 %}
+              <span class="badge text-bg-primary ms-2">Top rated</span>
+              {% endif %}
+            </h5>
+            <div class="small text-muted mb-2"><i class="bi bi-geo-alt"></i> {{ r.location }}</div>
+            <div class="small mb-2">Capacity: <strong>{{ r.capacity }}</strong></div>
+            <div class="small mb-2">⭐ {{ '%.1f'|format(r.avg or 0) }} · Booked {{ r.booked_count or 0 }} time{{ 's' if r.booked_count != 1 else '' }}</div>
+            <span class="badge {{ 'badge-restricted' if r.restriction=='restricted' else 'badge-available' }}">{{ r.restriction|capitalize }}</span>
+          </div>
+          <div class="col-12 col-md-3 text-md-end">
+            <div class="d-flex flex-column gap-2">
+              <a class="btn btn-brand w-100" href="{{ url_for('resources.detail', resource_id=r.resource_id) }}">View Details</a>
+              {% if current_user.is_authenticated and current_user.role in ['admin','staff'] %}
+              <div class="d-flex gap-2">
+                <a class="btn btn-sm btn-outline-secondary flex-fill" href="{{ url_for('admin.edit_resource', resource_id=r.resource_id) }}">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5L13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175l-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/>
+                  </svg>
+                  Edit
+                </a>
+                <a class="btn btn-sm btn-outline-warning flex-fill" href="{{ url_for('admin.resource_moderation', resource_id=r.resource_id, action='hide') }}">Hide</a>
+                <button type="button" class="btn btn-sm btn-danger flex-fill" data-bs-toggle="modal" data-bs-target="#deleteModal{{ r.resource_id }}">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                    <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4L4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                  </svg>
+                  Delete
+                </button>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="alert alert-warning">
+        <strong>No resources found.</strong> Try adjusting your filters or search criteria.
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Delete Modals for each resource -->
+{% if current_user.is_authenticated and current_user.role in ['admin','staff'] %}
+{% for r in resources %}
+<div class="modal fade" id="deleteModal{{ r.resource_id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ r.resource_id }}" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" id="deleteModalLabel{{ r.resource_id }}">Confirm Delete</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete <strong>{{ r.title }}</strong>?</p>
+        <p class="text-danger"><strong>Warning:</strong> This action cannot be undone. All bookings and reviews associated with this resource will also be deleted.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form method="post" action="{{ url_for('admin.delete_resource', resource_id=r.resource_id) }}" class="d-inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-danger">Delete Resource</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

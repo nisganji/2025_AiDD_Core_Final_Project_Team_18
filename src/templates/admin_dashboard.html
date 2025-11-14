@@ -1,0 +1,184 @@
+{% extends "_base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="mb-0 fw-bold">Admin Dashboard</h2>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('resources.browse') }}" class="btn btn-outline-secondary">View Resources</a>
+    <a href="{{ url_for('admin.users') }}" class="btn btn-outline-secondary">Manage Users</a>
+    <a href="{{ url_for('admin.create_resource') }}" class="btn btn-brand">Create Resource</a>
+  </div>
+ </div>
+
+<!-- Stats Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3"><div class="card p-3 text-center"><div class="text-muted small mb-1">Total Users</div><h3 class="mb-0 fw-bold">{{ stats.users }}</h3></div></div>
+  <div class="col-6 col-md-3"><div class="card p-3 text-center"><div class="text-muted small mb-1">Total Resources</div><h3 class="mb-0 fw-bold">{{ stats.resources }}</h3></div></div>
+  <div class="col-6 col-md-3"><div class="card p-3 text-center"><div class="text-muted small mb-1">Total Bookings</div><h3 class="mb-0 fw-bold">{{ stats.bookings }}</h3><div class="small text-muted mt-1">{{ stats.approved_bookings }} approved, {{ stats.pending_bookings_count }} pending</div></div></div>
+  <div class="col-6 col-md-3"><div class="card p-3 text-center"><div class="text-muted small mb-1">Pending Users</div><h3 class="mb-0 fw-bold">{{ stats.pending_users }}</h3></div></div>
+</div>
+
+<!-- Charts Section -->
+<div class="row g-4 mb-4">
+  <div class="col-lg-6">
+    <div class="card p-4 h-100">
+      <h5 class="mb-3 fw-bold">Resources by Category</h5>
+      <p class="text-muted small mb-3">Distribution of resources across different categories</p>
+      <div class="chart-container">
+        <canvas id="categoryChart" aria-label="Resources by category chart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card p-4 h-100">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="mb-0 fw-bold">Booking Trends</h5>
+        <div class="d-flex align-items-center gap-2">
+          <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="trendMode" id="modeDaily" value="daily" checked>
+            <label class="form-check-label" for="modeDaily">Daily</label>
+          </div>
+          <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="trendMode" id="modeHourly" value="hourly">
+            <label class="form-check-label" for="modeHourly">Hourly</label>
+          </div>
+          <input type="date" id="trendDate" class="form-control form-control-sm" value="{{ default_trend_date }}" aria-label="Trend date" disabled>
+        </div>
+      </div>
+      <p class="text-muted small mb-3">View bookings per day, or switch to hourly for a specific date.</p>
+      <div class="chart-container">
+        <canvas id="trendChart" aria-label="Booking trends chart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Management Sections -->
+<div class="row g-4 align-items-start">
+  <div class="col-12">
+    <div class="card p-4 mb-3">
+      <h5 class="mb-3 fw-bold">Pending Bookings</h5>
+      {% for b in pending_bookings %}
+      <div class="d-flex flex-column flex-md-row justify-content-between border-bottom py-3 mb-3">
+        <div class="mb-2 mb-md-0">
+          <div class="mb-1"><strong>{{ b.resource.title }}</strong> · {{ b.requester.name }}</div>
+          <span class="small text-muted">{{ b.start_datetime.strftime('%Y-%m-%d %H:%M') }} - {{ b.end_datetime.strftime('%H:%M') }}</span>
+        </div>
+        <div class="d-flex gap-2 flex-shrink-0">
+          <a class="btn btn-sm btn-outline-success" href="{{ url_for('admin.approve_booking', booking_id=b.booking_id, action='approve') }}">Approve</a>
+          <a class="btn btn-sm btn-danger" href="{{ url_for('admin.approve_booking', booking_id=b.booking_id, action='reject') }}">Reject</a>
+        </div>
+      </div>
+      {% else %}<div class="text-muted">No pending bookings.</div>{% endfor %}
+    </div>
+    <div class="card p-4 mb-3">
+      <h5 class="mb-3 fw-bold">Pending User Registrations</h5>
+      {% for u in pending_users %}
+      <div class="d-flex flex-column flex-md-row justify-content-between border-bottom py-3 mb-3">
+        <div class="mb-2 mb-md-0">
+          <div class="mb-1">{{ u.name }} · {{ u.email }} ({{ u.role }})</div>
+          {% if u.request_admin %}<span class="badge text-bg-warning">Admin requested</span>{% endif %}
+        </div>
+        <div class="d-flex flex-wrap gap-2 flex-shrink-0">
+          <a class="btn btn-sm btn-outline-success" href="{{ url_for('admin.approve_user', user_id=u.user_id, action='approve') }}">Approve</a>
+          <a class="btn btn-sm btn-danger" href="{{ url_for('admin.approve_user', user_id=u.user_id, action='reject') }}">Reject</a>
+          {% if u.request_admin %}<a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.grant_admin', user_id=u.user_id) }}">Grant Admin</a>{% endif %}
+        </div>
+      </div>
+      {% else %}<div class="text-muted">No pending users.</div>{% endfor %}
+    </div>
+    <div class="card p-4 mb-3">
+      <h5 class="mb-3 fw-bold">Flagged Reviews</h5>
+      {% if flagged_reviews %}
+        {% for rv in flagged_reviews %}
+        <div class="d-flex flex-column flex-md-row justify-content-between border-bottom py-3 mb-3">
+          <div class="mb-2 mb-md-0">
+            <div class="mb-1">
+              <strong>{{ rv.reviewer.name }}</strong>
+              <span class="text-muted small">on {{ rv.resource.title }} · {{ rv.timestamp.strftime('%Y-%m-%d') }}</span>
+            </div>
+            <div class="small mb-1">Rating: {{ rv.rating }} / 5</div>
+            <div class="small">{{ rv.comment }}</div>
+          </div>
+          <div class="d-flex flex-wrap gap-2 flex-shrink-0 mt-2 mt-md-0">
+            <a class="btn btn-sm btn-outline-danger"
+               href="{{ url_for('admin.review_action', review_id=rv.review_id, action='remove') }}">Remove</a>
+            <a class="btn btn-sm btn-outline-secondary"
+               href="{{ url_for('admin.review_action', review_id=rv.review_id, action='clear') }}">Clear Flag</a>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+      <div class="text-muted">No flagged reviews.</div>
+      {% endif %}
+    </div>
+    <div class="card p-4 mt-3">
+      <h5 class="mb-3 fw-bold">Hidden Resources (Table)</h5>
+      {% if draft_resources %}
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Category</th>
+              <th>Location</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in draft_resources %}
+            <tr>
+              <td>{{ r.title }}</td>
+              <td>{{ r.category }}</td>
+              <td>{{ r.location }}</td>
+              <td>
+                <div class="d-flex justify-content-end flex-wrap gap-2">
+                  <a class="btn btn-sm btn-outline-success" href="{{ url_for('admin.resource_moderation', resource_id=r.resource_id, action='unhide') }}">Unhide</a>
+                  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.edit_resource', resource_id=r.resource_id) }}">Edit</a>
+                  <form method="post" action="{{ url_for('admin.delete_resource', resource_id=r.resource_id) }}" class="d-inline mb-0">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}<div class="text-muted">No hidden resources.</div>{% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const categoryCtx = document.getElementById('categoryChart');
+  const categoryData = {{ category_chart|tojson }};
+  new Chart(categoryCtx, {
+    type: 'doughnut',
+    data: { labels: categoryData.labels, datasets: [{ data: categoryData.values, backgroundColor: ['#BF092F', '#132440', '#16476A', '#3B9797', '#BF092F', '#132440'], borderWidth: 2, borderColor: '#fff' }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' }, tooltip: { enabled: true } } }
+  });
+
+  const trendCtx = document.getElementById('trendChart');
+  const trendDaily = {{ trend_chart|tojson }};
+  const trendChart = new Chart(trendCtx, {
+    type: 'line',
+    data: { labels: trendDaily.labels, datasets: [{ label: 'Bookings', data: trendDaily.values, borderColor: '#132440', backgroundColor: 'rgba(19, 36, 64, 0.12)', tension: 0.35, fill: true }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: true } }, scales: { y: { beginAtZero: true } } }
+  });
+  const modeDaily = document.getElementById('modeDaily');
+  const modeHourly = document.getElementById('modeHourly');
+  const trendDate = document.getElementById('trendDate');
+  function setDaily(){ trendDate.disabled = true; trendChart.data.labels = trendDaily.labels; trendChart.data.datasets[0].data = trendDaily.values; trendChart.update(); }
+  async function setHourly(){
+    trendDate.disabled = false;
+    const d = trendDate.value;
+    try { const res = await fetch(`/api/trends/hourly?date=${d}`); if(!res.ok) return; const payload = await res.json(); trendChart.data.labels = payload.labels; trendChart.data.datasets[0].data = payload.values; trendChart.update(); } catch(e) {}
+  }
+  modeDaily.addEventListener('change', ()=>{ if(modeDaily.checked) setDaily(); });
+  modeHourly.addEventListener('change', ()=>{ if(modeHourly.checked) setHourly(); });
+  trendDate.addEventListener('change', ()=>{ if(modeHourly.checked) setHourly(); });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,201 @@
+{% extends "_base.html" %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div id="carousel" class="carousel slide mb-4">
+      <div class="carousel-inner">
+        {% set imgs = (resource.images or '').split(',') if resource.images else ['/static/img/1.png'] %}
+        {% for img in imgs %}
+        <div class="carousel-item {% if loop.first %}active{% endif %}">
+          <img class="d-block w-100 rounded-4" style="max-height:380px;object-fit:cover" src="{{ img }}" alt="{{ resource.title }}">
+        </div>
+        {% endfor %}
+      </div>
+      {% if imgs|length > 1 %}
+      <button class="carousel-control-prev" type="button" data-bs-target="#carousel" data-bs-slide="prev">
+        <span class="carousel-control-prev-icon"></span>
+        <span class="sr-only">Prev</span>
+      </button>
+      <button class="carousel-control-next" type="button" data-bs-target="#carousel" data-bs-slide="next">
+        <span class="carousel-control-next-icon"></span>
+        <span class="sr-only">Next</span>
+      </button>
+      {% endif %}
+    </div>
+    <div class="d-flex justify-content-between align-items-start mb-3">
+      <div>
+        <h3 class="mb-2 fw-bold">{{ resource.title }}</h3>
+        <p class="text-muted mb-0">{{ resource.location }} • Capacity {{ resource.capacity }}</p>
+      </div>
+      {% if current_user.is_authenticated and current_user.role in ['admin','staff'] %}
+      <div class="d-flex gap-2">
+        <a href="{{ url_for('admin.edit_resource', resource_id=resource.resource_id) }}" class="btn btn-sm btn-outline-secondary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5L13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175l-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/>
+          </svg>
+          Edit
+        </a>
+        <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+            <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4L4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+          </svg>
+          Delete
+        </button>
+        {% if resource.status == 'published' %}
+        <a href="{{ url_for('admin.resource_moderation', resource_id=resource.resource_id, action='hide') }}" class="btn btn-sm btn-outline-warning">Hide</a>
+        {% else %}
+        <a href="{{ url_for('admin.resource_moderation', resource_id=resource.resource_id, action='unhide') }}" class="btn btn-sm btn-outline-success">Unhide</a>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+    <div class="mb-4">
+      <span class="badge {{ 'badge-restricted' if resource.restriction=='restricted' else 'badge-available' }} mb-2">{{ resource.restriction|capitalize }}</span>
+      {% if (avg_rating or 0) >= 4.5 %}
+      <span class="badge text-bg-primary ms-2">Top rated</span>
+      {% endif %}
+      <div class="mt-2">⭐ <strong>{{ '%.1f'|format(avg_rating or 0) }}</strong> ({{ reviews|length }} review{{ 's' if reviews|length != 1 else '' }})</div>
+    </div>
+    <h5 class="mb-3">Description</h5>
+    <p class="mb-4">{{ resource.description }}</p>
+    {% if resource.category != 'Equipment' %}
+    <h5 class="mb-3">Available Slots for {{ date or 'selected date' }}</h5>
+    <div class="d-flex flex-wrap gap-2 mb-4">
+      {% for s in available_slots %}
+        <span class="badge text-bg-success p-2">{{ s }}</span>
+      {% else %}
+        <span class="text-muted">No free slots for this date.</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <h5 class="mt-4 mb-3">Reviews</h5>
+    <div class="mb-4">
+      {% for rv in reviews %}
+        <div class="border-bottom py-3 mb-3">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <strong>{{ rv.reviewer.name }}</strong>
+            <span class="text-muted small">{{ rv.timestamp.strftime('%Y-%m-%d') }}</span>
+          </div>
+          <div class="star mb-2">{{ '★' * rv.rating }}{{ '☆' * (5-rv.rating) }}</div>
+          <div>{{ rv.comment|safe }}</div>
+          {% if current_user.is_authenticated %}
+          <form method="post"
+                action="{{ url_for('resources.flag_review', resource_id=resource.resource_id, review_id=rv.review_id) }}"
+                class="mt-1">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-link btn-sm text-danger p-0">Report</button>
+          </form>
+          {% endif %}
+        </div>
+      {% else %}
+        <p class="text-muted">No reviews yet. Be the first to review!</p>
+      {% endfor %}
+    </div>
+    {% if current_user.is_authenticated %}
+    <div class="card p-3 mt-3">
+      <h6 class="mb-3">Leave a review</h6>
+      <form method="post" action="{{ url_for('resources.add_review', resource_id=resource.resource_id) }}">
+        {{ review_form.csrf_token }}
+        <div class="row g-2">
+          <div class="col-12 col-md-2">{{ review_form.rating(class="form-select") }}</div>
+          <div class="col-12 col-md-7">{{ review_form.comment(class="form-control", placeholder="Share your experience…") }}</div>
+          <div class="col-12 col-md-3 d-grid"><button class="btn btn-brand">Submit</button></div>
+        </div>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  <div class="col-lg-4">
+    <div class="card p-3 sticky-top" style="top:20px;">
+      {% if resource.category == 'Equipment' %}
+        <h5 class="mb-2">Walk-in Collection</h5>
+        <div class="alert alert-info mb-2">
+          NOTE: WALK IN AND COLLECT
+        </div>
+        <p class="text-muted small mb-0">No booking required for equipment.</p>
+      {% else %}
+        <h5 class="mb-3">Request Booking</h5>
+        {% if current_user.is_authenticated %}
+        <form method="post" action="{{ url_for('bookings.request_booking', resource_id=resource.resource_id) }}">
+          {{ form.csrf_token }}
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Date</label>
+            <input type="text" id="datePicker" class="form-control" name="date" value="{{ date or '' }}" required placeholder="Select a date">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Time Slot</label>
+            <select class="form-select" name="slot" required>
+              {% if available_slots %}
+                {% for slot in available_slots %}
+                <option value="{{slot}}">{{slot}}</option>
+                {% endfor %}
+              {% else %}
+                <option value="">No slots available</option>
+              {% endif %}
+            </select>
+          </div>
+          <div class="d-grid"><button class="btn btn-brand" {% if not available_slots %}disabled{% endif %}>Request Booking</button></div>
+          {% if conflict_warning %}<div class="text-danger small mt-2">{{ conflict_warning }}</div>{% endif %}
+        </form>
+        {% if last_booking %}
+        <div class="d-grid mt-2">
+          <a class="btn btn-outline-secondary" href="{{ url_for('bookings.export_ics', booking_id=last_booking.booking_id) }}">Add to Calendar (.ics)</a>
+        </div>
+        {% endif %}
+        {% else %}
+        <p class="text-muted">Please <a href="{{ url_for('auth.login') }}">sign in</a> to book this resource.</p>
+        {% endif %}
+        <div class="d-grid mt-2">
+          {% if current_user.is_authenticated and resource.owner_id and current_user.user_id != resource.owner_id %}
+            <a class="btn btn-outline-secondary" href="{{ url_for('messages.thread', user_id=resource.owner_id) }}">Message Owner</a>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+{% if current_user.is_authenticated and current_user.role in ['admin','staff'] %}
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" id="deleteModalLabel">Confirm Delete</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete <strong>{{ resource.title }}</strong>?</p>
+        <p class="text-danger"><strong>Warning:</strong> This action cannot be undone. All bookings and reviews associated with this resource will also be deleted.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form method="post" action="{{ url_for('admin.delete_resource', resource_id=resource.resource_id) }}" class="d-inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-danger">Delete Resource</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+{% if include_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function(){
+    const picker = document.querySelector('#datePicker');
+    if (window.flatpickr && picker) {
+      flatpickr(picker, {
+        altInput: true,
+        altFormat: 'F j, Y',
+        dateFormat: 'Y-m-d',
+        minDate: 'today',
+        disableMobile: true
+      });
+    }
+  });
+</script>
+{% endif %}
+{% endblock %}

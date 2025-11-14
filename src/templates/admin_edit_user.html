@@ -1,0 +1,40 @@
+{% extends "_base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="mb-0 fw-bold">Edit User</h2>
+  <a href="{{ url_for('admin.users') }}" class="btn btn-outline-secondary">← Back</a>
+</div>
+
+<div class="card p-4">
+  <form method="post">
+    {{ form.csrf_token }}
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label fw-semibold">Name</label>
+        {{ form.name(class="form-control") }}
+      </div>
+      <div class="col-md-6">
+        <label class="form-label fw-semibold">Email</label>
+        {{ form.email(class="form-control") }}
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-semibold">Role</label>
+        {{ form.role(class="form-select") }}
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-semibold">Department</label>
+        {{ form.department(class="form-control") }}
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-semibold">Approved</label>
+        {{ form.is_approved(class="form-select") }}
+      </div>
+    </div>
+    <div class="d-flex gap-2 mt-4">
+      <button class="btn btn-brand">Save Changes</button>
+      <a href="{{ url_for('admin.users') }}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+

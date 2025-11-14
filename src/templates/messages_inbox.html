@@ -1,0 +1,33 @@
+{% extends "_base.html" %}
+{% block content %}
+<h3 class="mb-4 fw-bold">Messages</h3>
+<div class="row g-3">
+  <div class="col-12 col-lg-4">
+    <div class="card p-3 h-100">
+      <h6 class="mb-3 fw-semibold">Conversations</h6>
+      <ul class="list-group list-group-flush">
+        {% for t in threads %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          <a href="{{ url_for('messages.thread', user_id=t.other_id) }}" class="text-decoration-none fw-semibold">{{ t.other_name }}</a>
+          <span class="badge text-bg-secondary">{{ t.count }}</span>
+        </li>
+        {% else %}
+        <li class="list-group-item text-muted">No messages yet.</li>
+        {% endfor %}
+      </ul>
+      {% if current_user.role=='admin' %}
+      <hr class="my-3">
+      <form class="d-flex flex-column flex-sm-row gap-2" method="get" action="{{ url_for('messages.new_with_user') }}">
+        <input class="form-control" name="email" placeholder="Start chat with email" type="email">
+        <button class="btn btn-brand">Start</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-12 col-lg-8">
+    <div class="card p-4">
+      <div class="alert alert-info mb-0">Select a conversation from the list to view messages.</div>
+    </div>
+  </div>
+</div>
+{% endblock %}

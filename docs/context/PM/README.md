@@ -1,0 +1,1 @@
+Success metric: utilization of study rooms > 70%.

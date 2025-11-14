@@ -1,0 +1,1 @@
+Goal: minimize booking friction and conflict.
